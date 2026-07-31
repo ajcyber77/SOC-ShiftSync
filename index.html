@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SOC Shift Handover</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#0a0e17;--bg2:#111827;--card:#1a2332;--border:#2d3a4f;--accent:#3b82f6;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--crit:#dc2626;--maj:#f97316;--tp:#f1f5f9;--ts:#94a3b8;--tm:#64748b;--r:12px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tp);min-height:100vh;line-height:1.5;background-image:radial-gradient(ellipse at 20% 0%,rgba(59,130,246,.08),transparent 50%)}
+.header{background:linear-gradient(135deg,#0f172a,#1e293b);border-bottom:1px solid var(--border);padding:1rem 1.5rem;position:sticky;top:0;z-index:100}
+.header-inner{max-width:1500px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.logo{display:flex;align-items:center;gap:.75rem}
+.logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--accent),#8b5cf6);border-radius:10px;display:flex;align-items:center;justify-content:center}
+.logo h1{font-size:1.2rem}.logo span{font-size:.75rem;color:var(--ts);display:block}
+.header-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:8px;font-size:.85rem;font-weight:600;border:none;cursor:pointer}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#2563eb);color:#fff}
+.btn-secondary{background:var(--card);color:var(--tp);border:1px solid var(--border)}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--err);border:1px solid rgba(239,68,68,.3)}
+.btn-success{background:rgba(16,185,129,.15);color:var(--ok);border:1px solid rgba(16,185,129,.3)}
+.btn-sm{padding:.3rem .55rem;font-size:.75rem}
+.main{max-width:1500px;margin:0 auto;padding:1.25rem;display:grid;gap:1.25rem}
+.analyst-bar{display:flex;gap:1rem;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.8rem 1rem}
+.analyst-bar label{font-size:.75rem;color:var(--ts);display:block}
+.analyst-bar input,.analyst-bar select{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;color:var(--tp);font-size:.85rem;min-width:130px}
+.stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:.6rem}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem;text-align:center}
+.stat-value{font-size:1.4rem;font-weight:700}.stat-label{font-size:.65rem;text-transform:uppercase;color:var(--tm)}
+.stat-critical .stat-value{color:var(--crit)}.stat-major .stat-value{color:var(--maj)}
+.section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.section-header{padding:.85rem 1.1rem;background:rgba(0,0,0,.2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
+.section-header h2{font-size:.95rem;display:flex;align-items:center;gap:.4rem}.section-header h2 i{color:var(--accent)}
+.section-body{padding:1.1rem}
+.client-group-title{font-size:.8rem;font-weight:600;color:var(--ts);text-transform:uppercase;margin:1rem 0 .6rem;display:flex;align-items:center;gap:.4rem}
+.client-group-title:first-child{margin-top:0}.client-group-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:1rem}
+.client-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.client-card.disabled{opacity:.5}.client-card.disabled .card-body{pointer-events:none}
+.card-header{padding:.85rem 1rem;background:linear-gradient(135deg,rgba(59,130,246,.12),transparent);border-bottom:1px solid var(--border);display:flex;justify-content:space-between}
+.card-title h3{font-size:.95rem}.client-id{font-size:.72rem;color:var(--accent);font-family:monospace}
+.card-body{padding:.9rem 1rem}
+.upload-zone{border:2px dashed var(--border);border-radius:8px;padding:.75rem;text-align:center;cursor:pointer;background:rgba(0,0,0,.15);margin-bottom:.6rem}
+.upload-zone:hover{border-color:var(--accent)}.upload-zone input{display:none}
+.upload-zone i{color:var(--accent);font-size:1.3rem}.upload-zone p{font-size:.78rem;color:var(--ts)}
+.sev-badge{font-size:.65rem;font-weight:600;padding:.12rem .4rem;border-radius:4px}
+.sev-critical{background:rgba(220,38,38,.2);color:#fca5a5}.sev-major{background:rgba(249,115,22,.2);color:#fdba74}
+.alert-row{background:rgba(0,0,0,.22);border:1px solid var(--border);border-radius:8px;padding:.65rem .75rem;margin-bottom:.5rem;font-size:.8rem}
+.alert-row-head{display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap;align-items:flex-start}
+.alert-msg{color:var(--ts);font-size:.75rem;margin:.3rem 0 .5rem;line-height:1.35}
+.disp-row{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-top:.4rem}
+.disp-row select,.disp-row input,.disp-row textarea{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.3rem .5rem;color:var(--tp);font-size:.75rem}
+.disp-row textarea{width:100%;min-height:56px;resize:vertical}
+.disp-label{font-size:.7rem;color:var(--tm);margin-right:.2rem}
+.tag{font-size:.65rem;padding:.1rem .35rem;border-radius:4px;font-weight:600}
+.tag-assigned{background:rgba(59,130,246,.2);color:#93c5fd}
+.tag-notified{background:rgba(245,158,11,.2);color:#fcd34d}
+.tag-reported{background:rgba(16,185,129,.2);color:#6ee7b7}
+.toggle-switch{position:relative;width:36px;height:20px;display:inline-block}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:#374151;border-radius:20px;cursor:pointer}
+.toggle-slider::before{content:'';position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent)}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(16px)}
+.card-subsection{margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)}
+.card-subsection h4{font-size:.78rem;color:var(--ts);margin-bottom:.4rem}
+.input-row{display:flex;gap:.35rem;margin-top:.35rem;flex-wrap:wrap}
+.input-row input,.input-row select{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;color:var(--tp);font-size:.8rem}
+.activity-item,.notif-item{background:rgba(0,0,0,.2);border-radius:6px;padding:.4rem .55rem;margin-bottom:.3rem;font-size:.78rem;display:flex;justify-content:space-between;gap:.4rem}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:1000;padding:1rem}
+.modal-overlay.active{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:880px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-header{padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-body{padding:1.2rem;overflow-y:auto;flex:1}
+.modal-footer{padding:.8rem 1.2rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap}
+.email-preview{background:#fff;color:#1a1a1a;border-radius:8px;padding:1.25rem;font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.55}
+.email-preview h1{font-size:17px;color:#1e3a5f;border-bottom:2px solid #3b82f6;padding-bottom:4px;margin-bottom:8px}
+.email-preview h2{font-size:14px;color:#1e40af;margin:14px 0 6px}
+.email-preview .client-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;margin:8px 0}
+.email-preview .sev-crit{color:#dc2626;font-weight:700}.email-preview .sev-maj{color:#ea580c;font-weight:700}
+.toast-container{position:fixed;bottom:1.2rem;right:1.2rem;z-index:2000}
+.toast{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:8px;padding:.65rem 1rem;margin-top:.4rem;font-size:.85rem;max-width:340px}
+.toast.success{border-left-color:var(--ok)}.toast.error{border-left-color:var(--err)}
+.hidden{display:none!important}
+.hint{font-size:.75rem;color:var(--tm)}
+.settings-list{margin:.5rem 0}
+.settings-list .item{display:flex;gap:.4rem;align-items:center;margin-bottom:.35rem}
+.settings-list input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;color:var(--tp);font-size:.8rem}
+.add-client-form{display:grid;grid-template-columns:1fr 120px 120px auto;gap:.4rem;margin-bottom:.8rem}
+@media(max-width:700px){.add-client-form{grid-template-columns:1fr}}
+.add-client-form input,.add-client-form select{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.4rem .55rem;color:var(--tp);font-size:.85rem}
+.gemini-status{font-size:.72rem;color:var(--tm)}
+.gemini-status.on{color:var(--ok)}
+</style>
+</head>
+<body>
+<header class="header"><div class="header-inner">
+<div class="logo"><div class="logo-icon"><i class="fas fa-shield-halved"></i></div>
+<div><h1>SOC Shift Handover</h1><span>Excel alerts + disposition + Groq</span></div></div>
+<div class="header-actions">
+<span class="gemini-status" id="geminiStatus">Groq: off</span>
+<button class="btn btn-secondary" onclick="openSettings()"><i class="fas fa-cog"></i> Settings</button>
+<button class="btn btn-secondary" onclick="openHistory()"><i class="fas fa-history"></i> History</button>
+<button class="btn btn-danger" onclick="resetHandover()"><i class="fas fa-rotate-left"></i> New Handover</button>
+<button class="btn btn-primary" id="btnProcess" onclick="processHandover()"><i class="fas fa-envelope"></i> Process Handover</button>
+</div></div></header>
+
+<main class="main">
+<div class="analyst-bar">
+<div><label>Analyst 1</label><input id="analystName1" placeholder="Primary"/></div>
+<div><label>Analyst 2</label><input id="analystName2" placeholder="Secondary"/></div>
+<div><label>Shift</label>
+<select id="shiftSelect">
+<option>Morning (08:00–16:00)</option>
+<option>Evening (16:00–00:00)</option>
+<option>Night (00:00–08:00)</option>
+</select></div>
+<div><label>Date</label><input type="date" id="shiftDate"/></div>
+<div><label>Company</label><input id="companyName" value="Arrownex"/></div>
+</div>
+
+<div class="stats-bar">
+<div class="stat-card"><div class="stat-value" id="sClients">0</div><div class="stat-label">Clients</div></div>
+<div class="stat-card"><div class="stat-value" id="sTotal">0</div><div class="stat-label">Alerts</div></div>
+<div class="stat-card stat-critical"><div class="stat-value" id="sCrit">0</div><div class="stat-label">Critical</div></div>
+<div class="stat-card stat-major"><div class="stat-value" id="sMaj">0</div><div class="stat-label">Major</div></div>
+<div class="stat-card"><div class="stat-value" id="sAssigned">0</div><div class="stat-label">Assigned</div></div>
+<div class="stat-card"><div class="stat-value" id="sNotified">0</div><div class="stat-label">Notified</div></div>
+<div class="stat-card"><div class="stat-value" id="sReported">0</div><div class="stat-label">Reported</div></div>
+</div>
+
+<section class="section">
+<div class="section-header"><h2><i class="fas fa-exclamation-triangle" style="color:var(--err)"></i> Important notifications</h2></div>
+<div class="section-body">
+<div class="input-row"><input id="impInput" placeholder="Urgent for next shift..."/><button class="btn btn-danger btn-sm" onclick="addImp()"><i class="fas fa-plus"></i></button></div>
+<div id="impList" style="margin-top:.5rem"></div>
+</div></section>
+
+<section class="section">
+<div class="section-header">
+<h2><i class="fas fa-building"></i> Clients</h2>
+<button class="btn btn-secondary btn-sm" onclick="document.getElementById('addForm').classList.toggle('hidden')"><i class="fas fa-plus"></i> Add client</button>
+</div>
+<div class="section-body">
+<div id="addForm" class="add-client-form hidden">
+<input id="newName" placeholder="Name"/><input id="newId" placeholder="Tenant ID"/>
+<select id="newGroup"><option value="ARROWNEX">ARROWNEX</option><option value="BeSafe">Be Safe</option><option value="Custom">Custom</option></select>
+<button class="btn btn-primary btn-sm" onclick="addClient()">Add</button>
+</div>
+<p class="hint" style="margin-bottom:.75rem">Upload Excel alert sheet → set disposition on each alert (Assigned / Notified / Reported). Reported alerts can use Groq to shorten pasted analysis.</p>
+<div class="client-group-title">ARROWNEX Clients</div>
+<div class="clients-grid" id="gARROWNEX"></div>
+<div class="client-group-title">Be Safe Clients</div>
+<div class="clients-grid" id="gBeSafe"></div>
+<div class="client-group-title" id="gCustomTitle">Custom</div>
+<div class="clients-grid" id="gCustom"></div>
+</div></section>
+
+<section class="section">
+<div class="section-header"><h2><i class="fas fa-sticky-note"></i> General notes</h2></div>
+<div class="section-body"><textarea id="generalNotes" style="width:100%;min-height:70px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.6rem;color:var(--tp);font-size:.85rem"></textarea></div>
+</section>
+</main>
+
+<!-- Settings -->
+<div class="modal-overlay" id="settingsModal">
+<div class="modal" style="max-width:620px">
+<div class="modal-header"><h3><i class="fas fa-cog"></i> Settings</h3>
+<button class="btn btn-secondary btn-sm" onclick="closeModal('settingsModal')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<h4 style="margin-bottom:.4rem;font-size:.9rem">Groq (free API)</h4>
+<p class="hint">Used to shorten “Notified and Reported” analysis text into one precise sentence. Get a free key at console.groq.com/keys.</p>
+<input id="geminiKey" type="password" placeholder="API key gsk_..." style="width:100%;margin:.4rem 0;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.45rem;color:var(--tp)"/>
+<select id="geminiModel" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.4rem;color:var(--tp)">
+<option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+<option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
+<option value="gemma2-9b-it">gemma2-9b-it</option>
+</select>
+<p class="hint" style="margin-top:.3rem">Switched from Gemini to Groq — Gemini's free tier reports 0 quota in some regions/accounts, Groq's free tier works globally.</p>
+<label style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem;font-size:.85rem"><input type="checkbox" id="useGemini" checked/> Use Groq when key is set</label>
+<div style="margin-top:.6rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+<button class="btn btn-secondary btn-sm" id="btnTestGemini" onclick="testGemini()"><i class="fas fa-plug"></i> Test connection</button>
+<span class="hint" id="geminiTestResult"></span>
+</div>
+<hr style="border:none;border-top:1px solid var(--border);margin:1rem 0"/>
+<h4 style="font-size:.9rem;margin-bottom:.35rem">Assigned Only — reasons</h4>
+<div class="settings-list" id="listAssigned"></div>
+<div class="input-row"><input id="addAssigned" placeholder="New reason..."/><button class="btn btn-secondary btn-sm" onclick="addReason('assigned')">Add</button></div>
+<h4 style="font-size:.9rem;margin:1rem 0 .35rem">Notified Only — extra reasons</h4>
+<p class="hint">These are added on top of Assigned reasons.</p>
+<div class="settings-list" id="listNotifiedExtra"></div>
+<div class="input-row"><input id="addNotified" placeholder="New reason..."/><button class="btn btn-secondary btn-sm" onclick="addReason('notifiedExtra')">Add</button></div>
+</div>
+<div class="modal-footer"><button class="btn btn-primary" onclick="saveSettings()">Save settings</button></div>
+</div></div>
+
+<!-- Handover -->
+<div class="modal-overlay" id="handoverModal">
+<div class="modal">
+<div class="modal-header"><h3>Handover email</h3>
+<button class="btn btn-secondary btn-sm" onclick="closeModal('handoverModal')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body"><div class="email-preview" id="emailPreview"></div></div>
+<div class="modal-footer">
+<button class="btn btn-secondary" id="btnReprocess" onclick="reprocessHandover()"><i class="fas fa-rotate"></i> Reprocess</button>
+<button class="btn btn-primary" onclick="copyOutlook()"><i class="fas fa-paste"></i> Copy for Outlook</button>
+<button class="btn btn-success" onclick="downloadWord()"><i class="fas fa-file-word"></i> Word</button>
+<button class="btn btn-secondary" onclick="copyText()"><i class="fas fa-file-alt"></i> Text</button>
+<button class="btn btn-primary" onclick="saveHist()"><i class="fas fa-save"></i> Save</button>
+</div></div></div>
+
+<div class="modal-overlay" id="historyModal">
+<div class="modal" style="max-width:560px">
+<div class="modal-header"><h3>History</h3>
+<button class="btn btn-secondary btn-sm" onclick="closeModal('historyModal')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body" id="histList"></div>
+</div></div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const PREDEF = {
+  ARROWNEX: [
+    {id:'ITF0626',name:'INVICTUS TRADING FZE',short:'INVICTUS',group:'ARROWNEX'},
+    {id:'MAP0426',name:'MLCC',short:'MLCC',group:'ARROWNEX'},
+    {id:'CTS0625',name:'ARROWNEX',short:'ARROWNEX',group:'ARROWNEX'}
+  ],
+  BeSafe: [
+    {id:'UEN7712',name:'NRVA',short:'NRVA',group:'BeSafe'},
+    {id:'ZAG0126',name:'ZAGIL',short:'ZAGIL',group:'BeSafe'},
+    {id:'ZAG0126b',name:'DERAYA',short:'DERAYA',group:'BeSafe',displayId:'ZAG0126'},
+    {id:'UAO3800',name:'AL SALAM BANK',short:'AL SALAM BANK',group:'BeSafe'}
+  ]
+};
+
+const DEFAULT_ASSIGNED = ['Legitimate Upload','Legitimate Download','Blocked by Firewall','Failed Connection','Kaspersky','Closed and Verified','Closed','Other'];
+const DEFAULT_NOTIFIED_EXTRA = ['Repeated Alert','Failed Login'];
+
+let state = {
+  clients: {},
+  important: [],
+  generalNotes: '',
+  analystName1: '', analystName2: '',
+  shift: 'Morning (08:00–16:00)', date: '', companyName: 'Arrownex',
+  history: [],
+  geminiKey: '', geminiModel: 'llama-3.3-70b-versatile', useGemini: true,
+  reasonsAssigned: DEFAULT_ASSIGNED.slice(),
+  reasonsNotifiedExtra: DEFAULT_NOTIFIED_EXTRA.slice(),
+  lastHtml: '', lastText: ''
+};
+
+function mkClient(c){
+  return {id:c.id,name:c.name,short:c.short||c.name,group:c.group,displayId:c.displayId||c.id,
+    enabled:true,isCustom:!!c.isCustom,alerts:[],activities:[],activitiesOn:false,sysNotifs:[]};
+}
+
+function init(){
+  try{const s=localStorage.getItem('socHO_disp_v1');if(s)Object.assign(state,JSON.parse(s))}catch(e){}
+  // Gemini's free tier reports 0 quota in some regions, so this now runs on Groq
+  // (free, OpenAI-compatible API) instead. Force any old Gemini model name onto a live Groq model.
+  const DEPRECATED_GEMINI_MODELS=['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash','gemini-1.5-pro','gemini-1.0-pro','gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.5-pro'];
+  if(DEPRECATED_GEMINI_MODELS.includes(state.geminiModel)){
+    state.geminiModel='llama-3.3-70b-versatile';
+  }
+  if(!state.reasonsAssigned?.length)state.reasonsAssigned=DEFAULT_ASSIGNED.slice();
+  if(!state.reasonsNotifiedExtra?.length)state.reasonsNotifiedExtra=DEFAULT_NOTIFIED_EXTRA.slice();
+  ['Closed and Verified','Closed'].forEach(r=>{
+    if(!state.reasonsAssigned.includes(r)){
+      const otherIdx=state.reasonsAssigned.indexOf('Other');
+      if(otherIdx===-1)state.reasonsAssigned.push(r);
+      else state.reasonsAssigned.splice(otherIdx,0,r);
+    }
+  });
+  [...PREDEF.ARROWNEX,...PREDEF.BeSafe].forEach(c=>{
+    if(!state.clients[c.id])state.clients[c.id]=mkClient(c);
+    else{const x=state.clients[c.id];x.name=c.name;x.short=c.short;x.group=c.group;x.displayId=c.displayId||c.id;if(!x.alerts)x.alerts=[]}
+  });
+  if(!state.date)state.date=new Date().toISOString().slice(0,10);
+  document.getElementById('shiftDate').value=state.date;
+  document.getElementById('analystName1').value=state.analystName1||'';
+  document.getElementById('analystName2').value=state.analystName2||'';
+  document.getElementById('shiftSelect').value=state.shift||'Morning (08:00–16:00)';
+  document.getElementById('companyName').value=state.companyName||'Arrownex';
+  document.getElementById('generalNotes').value=state.generalNotes||'';
+  updateGeminiBadge();
+  render();
+}
+
+function save(){
+  state.analystName1=document.getElementById('analystName1').value;
+  state.analystName2=document.getElementById('analystName2').value;
+  state.shift=document.getElementById('shiftSelect').value;
+  state.date=document.getElementById('shiftDate').value;
+  state.companyName=document.getElementById('companyName').value;
+  state.generalNotes=document.getElementById('generalNotes').value;
+  // strip large analysis paste for storage optionally keep
+  const copy=JSON.parse(JSON.stringify(state));
+  Object.values(copy.clients).forEach(c=>{(c.alerts||[]).forEach(a=>{if(a.analysisText&&a.analysisText.length>8000)a.analysisText=a.analysisText.slice(0,8000)+'…'})});
+  localStorage.setItem('socHO_disp_v1',JSON.stringify(copy));
+}
+
+function reasonsFor(disp){
+  if(disp==='assigned')return state.reasonsAssigned.slice();
+  if(disp==='notified')return [...state.reasonsAssigned,...state.reasonsNotifiedExtra];
+  return [];
+}
+
+function render(){
+  renderClients();
+  renderImp();
+  updateStats();
+}
+
+function renderClients(){
+  ['gARROWNEX','gBeSafe','gCustom'].forEach(id=>document.getElementById(id).innerHTML='');
+  Object.values(state.clients).forEach(c=>{
+    const g=c.group==='ARROWNEX'?'gARROWNEX':c.group==='BeSafe'?'gBeSafe':'gCustom';
+    document.getElementById(g).appendChild(card(c));
+  });
+  document.getElementById('gCustomTitle').style.display=Object.values(state.clients).some(c=>c.group==='Custom'||c.isCustom)?'flex':'none';
+}
+
+function card(c){
+  const el=document.createElement('div');
+  el.className='client-card'+(c.enabled?'':' disabled');
+  const crit=c.alerts.filter(a=>a.severity==='Critical').length;
+  const maj=c.alerts.filter(a=>a.severity==='Major').length;
+  el.innerHTML=`
+<div class="card-header">
+  <div class="card-title"><h3>${esc(c.name)}</h3><div class="client-id">${esc(c.displayId)} · ${esc(c.short)}</div></div>
+  <div style="display:flex;gap:.35rem;align-items:center">
+    <label class="toggle-switch"><input type="checkbox" ${c.enabled?'checked':''} onchange="state.clients['${c.id}'].enabled=this.checked;save();render()"/><span class="toggle-slider"></span></label>
+    ${c.isCustom?`<button class="btn btn-danger btn-sm" onclick="delClient('${c.id}')"><i class="fas fa-trash"></i></button>`:''}
+  </div>
+</div>
+<div class="card-body">
+  <div style="font-size:.8rem;color:var(--ts);margin-bottom:.5rem">
+    Alerts: <strong style="color:var(--tp)">${c.alerts.length}</strong>
+    ${crit?`<span class="sev-badge sev-critical">Critical ${crit}</span>`:''}
+    ${maj?`<span class="sev-badge sev-major">Major ${maj}</span>`:''}
+  </div>
+  <div class="upload-zone" onclick="document.getElementById('up-${c.id}').click()"
+    ondragover="event.preventDefault()" ondrop="event.preventDefault();handleFiles(event.dataTransfer.files,'${c.id}')">
+    <i class="fas fa-file-excel"></i>
+    <p>Upload Excel alert sheet<br/><small>.xlsx / .xls / .csv / .json</small></p>
+    <input type="file" id="up-${c.id}" accept=".xlsx,.xls,.csv,.json" multiple onchange="handleFiles(this.files,'${c.id}');this.value=''"/>
+  </div>
+  <div id="alerts-${c.id}">${c.alerts.map((a,i)=>alertBlock(c.id,a,i)).join('')}</div>
+
+  <div class="card-subsection">
+    <h4><label class="toggle-switch" style="margin-right:.3rem"><input type="checkbox" ${c.activitiesOn?'checked':''} onchange="state.clients['${c.id}'].activitiesOn=this.checked;save();render()"/><span class="toggle-slider"></span></label> Pending activities</h4>
+    <div class="${c.activitiesOn?'':'hidden'}">
+      ${(c.activities||[]).map((a,i)=>`<div class="activity-item"><span>${esc(a)}</span><button class="btn btn-danger btn-sm" onclick="state.clients['${c.id}'].activities.splice(${i},1);save();render()"><i class="fas fa-times"></i></button></div>`).join('')}
+      <div class="input-row"><input id="act-${c.id}" placeholder="Pending..."/><button class="btn btn-secondary btn-sm" onclick="addAct('${c.id}')"><i class="fas fa-plus"></i></button></div>
+    </div>
+  </div>
+  <div class="card-subsection">
+    <h4>System notifications</h4>
+    ${(c.sysNotifs||[]).map((n,i)=>`<div class="notif-item"><span>${esc(n)}</span><button class="btn btn-danger btn-sm" onclick="state.clients['${c.id}'].sysNotifs.splice(${i},1);save();render()"><i class="fas fa-times"></i></button></div>`).join('')}
+    <div class="input-row"><input id="sys-${c.id}" placeholder="Device offline..."/><button class="btn btn-secondary btn-sm" onclick="addSys('${c.id}')"><i class="fas fa-plus"></i></button></div>
+  </div>
+</div>`;
+  return el;
+}
+
+function alertBlock(cid,a,i){
+  const disp=a.disposition||'';
+  const reasonOpts=reasonsFor(disp).map(r=>`<option value="${esc(r)}" ${a.reason===r?'selected':''}>${esc(r)}</option>`).join('');
+  const showReason=disp==='assigned'||disp==='notified';
+  const showOther=showReason&&a.reason==='Other';
+  const showAnalysis=disp==='reported';
+  const tag=disp==='assigned'?'tag-assigned':disp==='notified'?'tag-notified':disp==='reported'?'tag-reported':'';
+  const tagLabel=verdictLabel(a);
+  return `<div class="alert-row">
+    <div class="alert-row-head">
+      <div>
+        <code style="color:var(--accent);font-size:.72rem">${esc(a.alertId)}</code>
+        <span class="sev-badge sev-${(a.severity||'major').toLowerCase()}">${esc(a.severity)}</span>
+        ${disp?`<span class="tag ${tag}">${tagLabel}</span>`:''}
+        <div style="font-size:.78rem;margin-top:.15rem">${esc((a.alertType||'').substring(0,50))} · ${esc(a.status||'')}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="state.clients['${cid}'].alerts.splice(${i},1);save();render()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="alert-msg">${esc((a.message||'').substring(0,160))}${(a.message||'').length>160?'…':''}</div>
+    <div class="disp-row">
+      <span class="disp-label">Disposition</span>
+      <select onchange="setDisp('${cid}',${i},this.value)">
+        <option value="">— select —</option>
+        <option value="assigned" ${disp==='assigned'?'selected':''}>Assigned Only</option>
+        <option value="notified" ${disp==='notified'?'selected':''}>Notified Only</option>
+        <option value="reported" ${disp==='reported'?'selected':''}>Notified and Reported</option>
+      </select>
+      ${showReason?`<span class="disp-label">Reason</span>
+      <select onchange="setReason('${cid}',${i},this.value)">
+        <option value="">— reason —</option>${reasonOpts}
+      </select>`:''}
+    </div>
+    ${showOther?`<div class="disp-row" style="margin-top:.35rem"><textarea placeholder="Other notes..." onchange="setNotes('${cid}',${i},this.value)">${esc(a.notes||'')}</textarea></div>`:''}
+    ${showAnalysis?`<div class="disp-row" style="margin-top:.35rem;flex-direction:column;align-items:stretch">
+      <span class="disp-label">Paste alert analysis (Groq will shorten for handover)</span>
+      <textarea placeholder="Paste full analysis / AI Studio report here..." onchange="setAnalysis('${cid}',${i},this.value)">${esc(a.analysisText||'')}</textarea>
+      ${a.shortSummary?`<div class="hint" style="color:var(--ok)">✓ Short summary: ${esc(a.shortSummary)}</div>`:`<div class="hint">Summary generated on Process Handover if Groq is enabled</div>`}
+    </div>`:''}
+  </div>`;
+}
+
+function setDisp(cid,i,v){
+  const a=state.clients[cid].alerts[i];
+  a.disposition=v;a.reason='';a.notes='';
+  if(v!=='reported'){a.analysisText=a.analysisText||'';a.shortSummary=''}
+  save();render();
+}
+function setReason(cid,i,v){state.clients[cid].alerts[i].reason=v;if(v!=='Other')state.clients[cid].alerts[i].notes='';save();render()}
+function setNotes(cid,i,v){state.clients[cid].alerts[i].notes=v;save()}
+function setAnalysis(cid,i,v){state.clients[cid].alerts[i].analysisText=v;state.clients[cid].alerts[i].shortSummary='';save()}
+
+async function handleFiles(files,cid){
+  for(const file of files){
+    const name=file.name.toLowerCase();
+    let alerts=[];
+    if(name.endsWith('.xlsx')||name.endsWith('.xls'))alerts=await parseExcel(file);
+    else if(name.endsWith('.csv'))alerts=parseCsv(await readText(file));
+    else if(name.endsWith('.json'))alerts=parseJson(await readText(file),cid);
+    alerts=alerts.filter(a=>{
+      const s=(a.severity||'').toUpperCase();
+      return s.includes('CRIT')||s.includes('MAJOR');
+    });
+    // merge by alertId
+    const existing=new Set(state.clients[cid].alerts.map(a=>a.alertId));
+    alerts.forEach(a=>{
+      if(!existing.has(a.alertId)){
+        state.clients[cid].alerts.push({
+          ...a,
+          disposition:'',reason:'',notes:'',analysisText:'',shortSummary:''
+        });
+        existing.add(a.alertId);
+      }
+    });
+  }
+  save();render();
+  toast('Alerts loaded','success');
+}
+
+function readText(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsText(f)})}
+function readAB(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsArrayBuffer(f)})}
+
+async function parseExcel(file){
+  const buf=await readAB(file);
+  const wb=XLSX.read(buf,{type:'array',cellDates:true});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+  const alerts=[];
+  rows.forEach(row=>{
+    const r={};Object.keys(row).forEach(k=>r[k.trim().toLowerCase().replace(/\s+/g,' ')]=row[k]);
+    const alertId=String(r['alert id']||r['alert_id']||r['alertid']||'').trim();
+    if(!alertId)return;
+    const sev=normSev(r['severity']||'');
+    if(sev!=='Critical'&&sev!=='Major')return;
+    alerts.push({
+      alertId,alertType:String(r['type']||r['alert type']||'Unknown').trim(),
+      severity:sev,status:normStat(r['status']||'Open'),
+      message:String(r['message']||r['alert message']||'').trim(),
+      entity:String(r['entity']||r['host']||'').trim(),
+      timeGenerated:String(r['time']||r['timestamp']||'')
+    });
+  });
+  return alerts;
+}
+function parseCsv(content){
+  const lines=content.trim().split(/\r?\n/);if(lines.length<2)return[];
+  const h=lines[0].split(',').map(x=>x.trim().toLowerCase().replace(/"/g,''));
+  const alerts=[];
+  for(let i=1;i<lines.length;i++){
+    const cols=lines[i].split(',');const r={};h.forEach((k,j)=>r[k]=(cols[j]||'').replace(/^"|"$/g,'').trim());
+    const alertId=r['alert id']||r['alert_id']||'';if(!alertId)continue;
+    const sev=normSev(r['severity']||'');if(sev!=='Critical'&&sev!=='Major')continue;
+    alerts.push({alertId,alertType:r['type']||'Unknown',severity:sev,status:normStat(r['status']||'Open'),
+      message:r['message']||'',entity:r['entity']||'',timeGenerated:r['time']||''});
+  }
+  return alerts;
+}
+function parseJson(content,cid){
+  const alerts=[];
+  try{
+    let data=JSON.parse(content);if(!Array.isArray(data))data=[data];
+    const items=[];data.forEach(x=>{if(Array.isArray(x))items.push(...x);else items.push(x)});
+    items.forEach(item=>{
+      const src=item._source||item;
+      if(!src.alert_id&&!src.alert_type)return;
+      const sev=normSev(src.alert_severity||src.severity||src.alert_severity_score);
+      if(sev!=='Critical'&&sev!=='Major')return;
+      alerts.push({
+        alertId:String(src.alert_id||'N/A'),
+        alertType:src.alert_type||'Unknown',severity:sev,
+        status:normStat(src.alert_status||'OPEN'),
+        message:src.message||'',
+        entity:(src.entity&&src.entity.entity_id)||'',
+        timeGenerated:src.recent_event_timestamp||''
+      });
+    });
+  }catch(e){}
+  return alerts;
+}
+function normSev(s){
+  if(s==null||s==='')return'Major';
+  if(typeof s==='number')return s>=90?'Critical':'Major';
+  const u=String(s).toUpperCase();
+  if(u.includes('CRIT'))return'Critical';
+  return'Major';
+}
+function normStat(s){
+  if(!s)return'OPEN';
+  const u=String(s).toUpperCase();
+  return (u.includes('CLOSE')||u.includes('RESOLV'))?'CLOSED':'OPEN';
+}
+
+function addAct(id){const t=document.getElementById('act-'+id).value.trim();if(!t)return;state.clients[id].activities.push(t);document.getElementById('act-'+id).value='';save();render()}
+function addSys(id){const t=document.getElementById('sys-'+id).value.trim();if(!t)return;state.clients[id].sysNotifs.push(t);document.getElementById('sys-'+id).value='';save();render()}
+function addImp(){const t=document.getElementById('impInput').value.trim();if(!t)return;state.important.push(t);document.getElementById('impInput').value='';save();renderImp()}
+function renderImp(){
+  document.getElementById('impList').innerHTML=state.important.map((n,i)=>
+    `<div class="notif-item"><span>${esc(n)}</span><button class="btn btn-danger btn-sm" onclick="state.important.splice(${i},1);save();renderImp()"><i class="fas fa-times"></i></button></div>`
+  ).join('')||'<span class="hint">None</span>';
+}
+function addClient(){
+  const name=document.getElementById('newName').value.trim(),id=document.getElementById('newId').value.trim(),g=document.getElementById('newGroup').value;
+  if(!name||!id)return toast('Required','error');
+  if(state.clients[id])return toast('Exists','error');
+  state.clients[id]=mkClient({id,name,short:name,group:g==='Custom'?'Custom':g,isCustom:true});
+  document.getElementById('addForm').classList.add('hidden');save();render();
+}
+function delClient(id){if(confirm('Remove?')){delete state.clients[id];save();render()}}
+
+function updateStats(){
+  let clients=0,total=0,crit=0,maj=0,asg=0,noti=0,rep=0;
+  Object.values(state.clients).forEach(c=>{
+    if(!c.enabled)return;
+    if(c.alerts.length||c.activities.length||c.sysNotifs.length)clients++;
+    total+=c.alerts.length;
+    crit+=c.alerts.filter(a=>a.severity==='Critical').length;
+    maj+=c.alerts.filter(a=>a.severity==='Major').length;
+    asg+=c.alerts.filter(a=>a.disposition==='assigned').length;
+    noti+=c.alerts.filter(a=>a.disposition==='notified').length;
+    rep+=c.alerts.filter(a=>a.disposition==='reported').length;
+  });
+  document.getElementById('sClients').textContent=clients;
+  document.getElementById('sTotal').textContent=total;
+  document.getElementById('sCrit').textContent=crit;
+  document.getElementById('sMaj').textContent=maj;
+  document.getElementById('sAssigned').textContent=asg;
+  document.getElementById('sNotified').textContent=noti;
+  document.getElementById('sReported').textContent=rep;
+}
+
+/* —— Groq (free, OpenAI-compatible) —— */
+async function geminiShorten(analysis, alertMeta){
+  const key=state.geminiKey;
+  if(!key)throw new Error('No Groq API key set in Settings.');
+  const model=state.geminiModel||'llama-3.3-70b-versatile';
+  const prompt=`You are a SOC analyst writing a shift handover line.
+Compress the following alert analysis into ONE precise explanation (2–4 sentences max) for the next shift.
+Include: what happened, key finding, action/status (closed/escalated/monitoring). No MITRE lists, no tables, no fluff.
+
+Alert: ${alertMeta.alertId||''} | ${alertMeta.severity||''} | ${alertMeta.alertType||''}
+Message: ${alertMeta.message||''}
+
+Analysis:
+${(analysis||'').slice(0,14000)}
+
+Output only the short explanation.`;
+  const url='https://api.groq.com/openai/v1/chat/completions';
+  let res;
+  try{
+    res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:model,messages:[{role:'user',content:prompt}],temperature:0.25,max_tokens:512})});
+  }catch(networkErr){
+    // fetch() itself threw — usually a network/CORS block, not an API error
+    throw new Error('Could not reach Groq (network/CORS error): '+networkErr.message);
+  }
+  const raw=await res.text();
+  let data;
+  try{data=JSON.parse(raw)}catch(e){
+    throw new Error('Groq returned a non-JSON response (HTTP '+res.status+'): '+raw.slice(0,300));
+  }
+  if(!res.ok){
+    const msg=data?.error?.message||raw.slice(0,300);
+    throw new Error('Groq API error '+res.status+' ('+model+'): '+msg);
+  }
+  const choice=data.choices?.[0];
+  if(!choice){
+    throw new Error('Groq returned no choices. Raw response: '+raw.slice(0,300));
+  }
+  const text=(choice.message?.content||'').trim();
+  if(!text){
+    throw new Error('Groq returned an empty response (finish_reason: '+(choice.finish_reason||'unknown')+').');
+  }
+  return text;
+}
+
+async function testGemini(){
+  const key=document.getElementById('geminiKey').value.trim();
+  const model=document.getElementById('geminiModel').value;
+  const out=document.getElementById('geminiTestResult');
+  if(!key){out.textContent='Enter an API key first.';out.style.color='var(--err)';return}
+  const btn=document.getElementById('btnTestGemini');
+  const orig=btn.innerHTML;
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Testing…';
+  out.textContent='';
+  const prevKey=state.geminiKey,prevModel=state.geminiModel;
+  state.geminiKey=key;state.geminiModel=model;
+  try{
+    const result=await geminiShorten(
+      'The analyst reviewed the login and confirmed it matched the user\'s known travel itinerary. No further action was required; the alert was closed as a false positive.',
+      {alertId:'TEST-001',severity:'Major',alertType:'Impossible Travel',message:'Test connection alert'}
+    );
+    out.textContent='✓ Groq responded: "'+result.slice(0,120)+(result.length>120?'…':'')+'"';
+    out.style.color='var(--ok)';
+  }catch(e){
+    console.error('Groq test failed:',e);
+    out.textContent='✗ '+e.message;
+    out.style.color='var(--err)';
+  }finally{
+    state.geminiKey=prevKey;state.geminiModel=prevModel;
+    btn.disabled=false;btn.innerHTML=orig;
+  }
+}
+
+async function processHandover(){
+  save();
+  const btn=document.getElementById('btnProcess');
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Processing…';
+  try{
+    // Summarize reported alerts needing Groq
+    if(state.useGemini&&state.geminiKey){
+      for(const c of Object.values(state.clients)){
+        if(!c.enabled)continue;
+        for(const a of c.alerts){
+          if(a.disposition==='reported'&&a.analysisText&&!a.shortSummary){
+            try{
+              a.shortSummary=await geminiShorten(a.analysisText,a);
+              toast('Summarized '+a.alertId,'success');
+            }catch(e){
+              console.error('Groq failed for '+a.alertId+':',e);
+              a.shortSummary=fallbackShort(a);
+              toast('Groq failed for '+a.alertId+': '+e.message,'error');
+            }
+          }
+        }
+      }
+      save();
+    }else{
+      Object.values(state.clients).forEach(c=>c.alerts.forEach(a=>{
+        if(a.disposition==='reported'&&a.analysisText&&!a.shortSummary)a.shortSummary=fallbackShort(a);
+      }));
+    }
+    const text=buildEmailText();
+    const html=buildEmailHtml();
+    state.lastText=text;state.lastHtml=html;
+    document.getElementById('emailPreview').innerHTML=html;
+    document.getElementById('handoverModal').classList.add('active');
+  }finally{
+    btn.disabled=false;btn.innerHTML='<i class="fas fa-envelope"></i> Process Handover';
+  }
+}
+
+async function reprocessHandover(){
+  save();
+  const btn=document.getElementById('btnReprocess');
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Reprocessing…';
+  try{
+    let found=false;
+    for(const c of Object.values(state.clients)){
+      if(!c.enabled)continue;
+      for(const a of c.alerts){
+        if(a.disposition==='reported'&&a.analysisText){
+          found=true;
+          if(state.useGemini&&state.geminiKey){
+            try{
+              a.shortSummary=await geminiShorten(a.analysisText,a);
+              toast('Reprocessed '+a.alertId,'success');
+            }catch(e){
+              console.error('Groq failed for '+a.alertId+':',e);
+              a.shortSummary=fallbackShort(a);
+              toast('Groq failed for '+a.alertId+': '+e.message,'error');
+            }
+          }else{
+            a.shortSummary=fallbackShort(a);
+          }
+        }
+      }
+    }
+    if(!found){toast('No reported alerts with pasted analysis to reprocess','error');}
+    save();
+    // Rebuild the handover email from the updated summaries without touching anything else
+    const text=buildEmailText();
+    const html=buildEmailHtml();
+    state.lastText=text;state.lastHtml=html;
+    document.getElementById('emailPreview').innerHTML=html;
+    render();
+  }finally{
+    btn.disabled=false;btn.innerHTML='<i class="fas fa-rotate"></i> Reprocess';
+  }
+}
+
+function resetHandover(){
+  const ok=confirm('Start a new handover?\n\nThis clears every alert, activity, notification, important note and AI summary for all clients, and resets the analyst names, shift, company and date fields.\n\nYour Groq API key/model, disposition reason lists, and saved History are NOT affected.\n\nThis cannot be undone. Continue?');
+  if(!ok)return;
+  Object.values(state.clients).forEach(c=>{
+    c.alerts=[];
+    c.activities=[];
+    c.sysNotifs=[];
+    c.activitiesOn=false;
+  });
+  state.important=[];
+  state.generalNotes='';
+  state.analystName1='';
+  state.analystName2='';
+  state.shift='Morning (08:00–16:00)';
+  state.companyName='Arrownex';
+  state.date=new Date().toISOString().slice(0,10);
+  state.lastHtml='';
+  state.lastText='';
+  document.getElementById('analystName1').value='';
+  document.getElementById('analystName2').value='';
+  document.getElementById('shiftSelect').value=state.shift;
+  document.getElementById('companyName').value=state.companyName;
+  document.getElementById('shiftDate').value=state.date;
+  document.getElementById('generalNotes').value='';
+  save();
+  render();
+  toast('Started a new handover — all alert data cleared','success');
+}
+
+function fallbackShort(a){
+  const t=(a.analysisText||a.message||'').replace(/\s+/g,' ').trim();
+  if(t.length<=280)return t;
+  return t.slice(0,280).replace(/\s+\S*$/,'')+'…';
+}
+
+function verdictLabel(a){
+  switch(a.disposition){
+    case 'assigned': return 'Assigned Only';
+    case 'notified': return 'Notified Only';
+    case 'reported': return 'Notified and Reported';
+    default: return '';
+  }
+}
+// Full verdict text incl. reason/summary, used for on-screen tags etc.
+function analystVerdict(a){
+  const label=verdictLabel(a);
+  if(a.disposition==='assigned'||a.disposition==='notified'){
+    const r=a.reason==='Other'?(a.notes||'Other'):(a.reason||'—');
+    return label+' — '+r;
+  }
+  if(a.disposition==='reported'){
+    return label+(a.shortSummary?': '+a.shortSummary:'');
+  }
+  return 'Pending disposition';
+}
+// Just the "verdict" chunk that should be highlighted in the handover email
+// (label + reason for assigned/notified; label only for reported —
+// the reported summary is shown separately as the alert body).
+function verdictHighlightText(a){
+  const label=verdictLabel(a);
+  if(!label)return'';
+  if(a.disposition==='assigned'||a.disposition==='notified'){
+    const r=a.reason==='Other'?(a.notes||'Other'):(a.reason||'—');
+    return label+' — '+r;
+  }
+  return label;
+}
+function lineForAlert(a){
+  return analystVerdict(a);
+}
+function truncateMsg(s,len){
+  s=(s||'').trim();
+  if(!s)return'';
+  if(s.length<=len)return s;
+  return s.slice(0,len).replace(/\s+\S*$/,'')+'...';
+}
+
+function buildEmailText(){
+  const a1=document.getElementById('analystName1').value||'SOC Analyst';
+  const a2=document.getElementById('analystName2').value;
+  const shift=document.getElementById('shiftSelect').value;
+  const date=document.getElementById('shiftDate').value;
+  const company=document.getElementById('companyName').value||'Arrownex';
+  const [y,m,d]=(date||'').split('-');
+  const df=d&&m&&y?`${d}/${m}/${y}`:date;
+  const shiftName=shift.includes('Morning')?'Morning':shift.includes('Evening')?'Evening':'Night';
+
+  let t=`Hi Team,\n\nPlease find below the shift handover details for the ${shiftName} Shift (${df}).\n\n`;
+  if(state.important.length){
+    t+=`Important:\n`;
+    state.important.forEach(n=>{t+=`* ${n}\n`});
+    t+=`\n`;
+  }
+  t+=`Alerts Handled:\n\n`;
+
+  const active=[],idle=[];
+  Object.values(state.clients).filter(c=>c.enabled).forEach(c=>{
+    if(c.alerts.length||c.activities.length||c.sysNotifs.length)active.push(c);else idle.push(c);
+  });
+
+  active.forEach(c=>{
+    const crit=c.alerts.filter(a=>a.severity==='Critical').length;
+    const maj=c.alerts.filter(a=>a.severity==='Major').length;
+    t+=`${c.short}:\n\n`;
+    if(c.alerts.length){
+      if(crit&&maj)t+=`* Received ${crit} Critical and ${maj} Major alert(s).\n\n`;
+      else if(crit)t+=`* Received ${crit} Critical alert${crit>1?'s':''}.\n\n`;
+      else t+=`* Received ${maj} Major alert${maj>1?'s':''}.\n\n`;
+      c.alerts.forEach((a,idx)=>{
+        const verdict=verdictHighlightText(a);
+        let msgLine='';
+        if(a.disposition==='reported'){
+          msgLine=a.shortSummary||fallbackShort(a);
+        }else{
+          msgLine=(a.message||'').trim()||'No disposition set.';
+        }
+        t+=`  * Alert ${idx+1}: ${msgLine}\n`;
+        if(verdict)t+=`  Analyst verdict: ${verdict}.\n`;
+        t+=`\n`;
+      });
+    }
+    (c.activities||[]).forEach(a=>{t+=`* Pending: ${a}\n\n`});
+    (c.sysNotifs||[]).forEach(n=>{t+=`* System: ${n}\n\n`});
+  });
+
+  if(idle.length)t+=`Other Clients:\n\n* No alerts received.\n\n`;
+  if(state.generalNotes)t+=`Additional notes:\n${state.generalNotes}\n\n`;
+  t+=`Regards,\n${a1}`;
+  if(a2)t+=`\n${a2}`;
+  t+=`\nSOC Analyst\n${company}`;
+  return t;
+}
+
+function buildEmailHtml(){
+  const a1=document.getElementById('analystName1').value||'SOC Analyst';
+  const a2=document.getElementById('analystName2').value;
+  const shift=document.getElementById('shiftSelect').value;
+  const date=document.getElementById('shiftDate').value;
+  const company=document.getElementById('companyName').value||'Arrownex';
+  const [y,m,d]=(date||'').split('-');
+  const df=d&&m&&y?`${d}/${m}/${y}`:date;
+  const shiftName=shift.includes('Morning')?'Morning':shift.includes('Evening')?'Evening':'Night';
+
+  // Simple, clean layout: plain text with bold labels. Color reserved for Important box only.
+  let h=`<div style="font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:14px;color:#222;line-height:1.5">`;
+  h+=`<p style="margin:0 0 12px">Hi Team,</p>`;
+  h+=`<p style="margin:0 0 16px">Please find below the shift handover details for the <strong>${esc(shiftName)}&nbsp;Shift (${esc(df)})</strong>.</p>`;
+
+  if(state.important.length){
+    h+=`<div style="background:#fef2f2;border-left:4px solid #dc2626;padding:8px 12px;margin:0 0 16px">`;
+    h+=`<strong style="color:#b91c1c">Important</strong>`;
+    state.important.forEach(n=>{h+=`<div style="margin-top:4px">• ${esc(n)}</div>`});
+    h+=`</div>`;
+  }
+
+  h+=`<p style="margin:0 0 12px"><strong>Alerts Handled:</strong></p>`;
+
+  const active=[],idle=[];
+  Object.values(state.clients).filter(c=>c.enabled).forEach(c=>{
+    if(c.alerts.length||c.activities.length||c.sysNotifs.length)active.push(c);else idle.push(c);
+  });
+
+  active.forEach(c=>{
+    const crit=c.alerts.filter(a=>a.severity==='Critical').length;
+    const maj=c.alerts.filter(a=>a.severity==='Major').length;
+
+    h+=`<p style="margin:14px 0 6px"><strong>${esc(c.short)}:</strong></p>`;
+
+    if(c.alerts.length){
+      let countHtml='';
+      if(crit&&maj){
+        countHtml=`Received <span style="color:#dc2626;font-weight:700">${crit} Critical</span> and <span style="color:#ea580c;font-weight:700">${maj} Major</span> alert(s).`;
+      }else if(crit){
+        countHtml=`Received <span style="color:#dc2626;font-weight:700">${crit} Critical</span> alert${crit>1?'s':''}.`;
+      }else{
+        countHtml=`Received <span style="color:#ea580c;font-weight:700">${maj} Major</span> alert${maj>1?'s':''}.`;
+      }
+      h+=`<p style="margin:0 0 4px">• ${countHtml}</p>`;
+
+      c.alerts.forEach((a,idx)=>{
+        const verdict=verdictHighlightText(a);
+        let msgHtml='';
+        if(a.disposition==='reported'){
+          msgHtml=esc(a.shortSummary||fallbackShort(a));
+        }else{
+          msgHtml=esc((a.message||'').trim())||'No disposition set.';
+        }
+        h+=`<p style="margin:0 0 2px;padding-left:18px">• <strong>Alert ${idx+1}:</strong> ${msgHtml}</p>`;
+        if(verdict){
+          h+=`<p style="margin:0 0 10px;padding-left:18px"><strong>Analyst verdict:</strong> ${esc(verdict)}.</p>`;
+        }
+      });
+    }
+
+    (c.activities||[]).forEach(a=>{
+      h+=`<p style="margin:0 0 6px;padding-left:18px">• <strong>Pending:</strong> <em>${esc(a)}</em></p>`;
+    });
+    (c.sysNotifs||[]).forEach(n=>{
+      h+=`<p style="margin:0 0 6px;padding-left:18px">• <strong style="color:#b45309">System:</strong> <span style="color:#92400e">${esc(n)}</span></p>`;
+    });
+  });
+
+  if(idle.length){
+    h+=`<p style="margin:14px 0 6px"><strong>Other Clients:</strong></p>`;
+    h+=`<p style="margin:0 0 8px">• No alerts received.</p>`;
+  }
+
+  if(state.generalNotes){
+    h+=`<div style="background:#eff6ff;border-left:4px solid #2563eb;padding:8px 12px;margin:0 0 16px">`;
+    h+=`<strong style="color:#1d4ed8">Additional Notes</strong>`;
+    h+=`<div style="margin-top:4px">${esc(state.generalNotes).replace(/\\n/g,'<br/>')}</div>`;
+    h+=`</div>`;
+  }
+
+  h+=`<p style="margin:18px 0 0">Regards,<br/>${esc(a1)}${a2?'<br/>'+esc(a2):''}<br/>SOC Analyst<br/>${esc(company)}</p>`;
+  h+=`</div>`;
+  return h;
+}
+
+async function copyOutlook(){
+  const html=`<!DOCTYPE html><html><body style="font-family:Calibri,Segoe UI,Arial;font-size:14px">${state.lastHtml}</body></html>`;
+  try{
+    if(navigator.clipboard&&window.ClipboardItem){
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/html':new Blob([html],{type:'text/html'}),
+        'text/plain':new Blob([state.lastText],{type:'text/plain'})
+      })]);
+      toast('Copied — paste in Outlook','success');
+    }else{await navigator.clipboard.writeText(state.lastText);toast('Text copied','success')}
+  }catch(e){await navigator.clipboard.writeText(state.lastText);toast('Text copied','success')}
+}
+function copyText(){navigator.clipboard.writeText(state.lastText).then(()=>toast('Copied','success'))}
+function downloadWord(){
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"></head><body style="font-family:Calibri">${state.lastHtml}</body></html>`;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+html],{type:'application/msword'}));
+  a.download=`SOC_Handover_${state.date||'draft'}.doc`;a.click();
+  toast('Word downloaded','success');
+}
+function saveHist(){
+  state.history.unshift({id:Date.now(),date:state.date,shift:state.shift,analyst:state.analystName1,text:state.lastText,html:state.lastHtml,savedAt:new Date().toISOString()});
+  if(state.history.length>20)state.history=state.history.slice(0,20);
+  save();toast('Saved','success');
+}
+function openHistory(){
+  document.getElementById('histList').innerHTML=state.history.length?state.history.map(h=>
+    `<div class="alert-row" style="cursor:pointer" onclick="state.lastText=state.history.find(x=>x.id===${h.id}).text;state.lastHtml=state.history.find(x=>x.id===${h.id}).html;document.getElementById('emailPreview').innerHTML=state.lastHtml;closeModal('historyModal');document.getElementById('handoverModal').classList.add('active')">
+      <strong>${esc(h.date)}</strong> ${esc(h.shift)}<div class="hint">${esc(h.analyst)}</div></div>`
+  ).join(''):'<p class="hint">Empty</p>';
+  document.getElementById('historyModal').classList.add('active');
+}
+
+function openSettings(){
+  document.getElementById('geminiKey').value=state.geminiKey||'';
+  document.getElementById('geminiModel').value=state.geminiModel||'llama-3.3-70b-versatile';
+  document.getElementById('useGemini').checked=state.useGemini!==false;
+  renderReasonLists();
+  document.getElementById('settingsModal').classList.add('active');
+}
+function renderReasonLists(){
+  document.getElementById('listAssigned').innerHTML=state.reasonsAssigned.map((r,i)=>
+    `<div class="item"><input value="${esc(r)}" onchange="state.reasonsAssigned[${i}]=this.value"/><button class="btn btn-danger btn-sm" onclick="state.reasonsAssigned.splice(${i},1);renderReasonLists()"><i class="fas fa-times"></i></button></div>`
+  ).join('');
+  document.getElementById('listNotifiedExtra').innerHTML=state.reasonsNotifiedExtra.map((r,i)=>
+    `<div class="item"><input value="${esc(r)}" onchange="state.reasonsNotifiedExtra[${i}]=this.value"/><button class="btn btn-danger btn-sm" onclick="state.reasonsNotifiedExtra.splice(${i},1);renderReasonLists()"><i class="fas fa-times"></i></button></div>`
+  ).join('');
+}
+function addReason(which){
+  if(which==='assigned'){
+    const v=document.getElementById('addAssigned').value.trim();if(!v)return;
+    state.reasonsAssigned.push(v);document.getElementById('addAssigned').value='';
+  }else{
+    const v=document.getElementById('addNotified').value.trim();if(!v)return;
+    state.reasonsNotifiedExtra.push(v);document.getElementById('addNotified').value='';
+  }
+  renderReasonLists();
+}
+function saveSettings(){
+  state.geminiKey=document.getElementById('geminiKey').value.trim();
+  state.geminiModel=document.getElementById('geminiModel').value;
+  state.useGemini=document.getElementById('useGemini').checked;
+  // collect reason inputs
+  document.querySelectorAll('#listAssigned input').forEach((inp,i)=>{if(state.reasonsAssigned[i]!==undefined)state.reasonsAssigned[i]=inp.value});
+  document.querySelectorAll('#listNotifiedExtra input').forEach((inp,i)=>{if(state.reasonsNotifiedExtra[i]!==undefined)state.reasonsNotifiedExtra[i]=inp.value});
+  save();updateGeminiBadge();closeModal('settingsModal');toast('Settings saved','success');render();
+}
+function updateGeminiBadge(){
+  const el=document.getElementById('geminiStatus');
+  if(state.geminiKey&&state.useGemini){el.textContent='Groq: on';el.className='gemini-status on'}
+  else{el.textContent='Groq: off';el.className='gemini-status'}
+}
+function closeModal(id){document.getElementById(id).classList.remove('active')}
+function esc(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function toast(m,t){const e=document.createElement('div');e.className='toast '+(t||'success');e.textContent=m;document.getElementById('toasts').appendChild(e);setTimeout(()=>e.remove(),3500)}
+
+['analystName1','analystName2','shiftSelect','shiftDate','companyName','generalNotes'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('change',save);
+});
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('active')}));
+init();
+</script>
+</body>
+</html>

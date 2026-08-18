@@ -174,11 +174,11 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 <p class="hint">Used to shorten “Notified and Reported” analysis text into one precise sentence. Get a free key at console.groq.com/keys.</p>
 <input id="geminiKey" type="password" placeholder="API key gsk_..." style="width:100%;margin:.4rem 0;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.45rem;color:var(--tp)"/>
 <select id="geminiModel" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.4rem;color:var(--tp)">
-<option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
-<option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
-<option value="gemma2-9b-it">gemma2-9b-it</option>
+<option value="openai/gpt-oss-120b">openai/gpt-oss-120b</option>
+<option value="openai/gpt-oss-20b">openai/gpt-oss-20b</option>
+<option value="qwen/qwen3.6-27b">qwen/qwen3.6-27b</option>
 </select>
-<p class="hint" style="margin-top:.3rem">Switched from Gemini to Groq — Gemini's free tier reports 0 quota in some regions/accounts, Groq's free tier works globally.</p>
+<p class="hint" style="margin-top:.3rem">Groq retired the gemma2-9b-it / llama-3.3-70b-versatile / llama-3.1-8b-instant models on June 17, 2026. This list now uses their current recommended replacements.</p>
 <label style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem;font-size:.85rem"><input type="checkbox" id="useGemini" checked/> Use Groq when key is set</label>
 <div style="margin-top:.6rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
 <button class="btn btn-secondary btn-sm" id="btnTestGemini" onclick="testGemini()"><i class="fas fa-plug"></i> Test connection</button>
@@ -244,7 +244,7 @@ let state = {
   analystName1: '', analystName2: '',
   shift: 'Morning (08:00–16:00)', date: '', companyName: 'Arrownex',
   history: [],
-  geminiKey: '', geminiModel: 'llama-3.3-70b-versatile', useGemini: true,
+  geminiKey: '', geminiModel: 'openai/gpt-oss-120b', useGemini: true,
   reasonsAssigned: DEFAULT_ASSIGNED.slice(),
   reasonsNotifiedExtra: DEFAULT_NOTIFIED_EXTRA.slice(),
   lastHtml: '', lastText: ''
@@ -257,11 +257,19 @@ function mkClient(c){
 
 function init(){
   try{const s=localStorage.getItem('socHO_disp_v1');if(s)Object.assign(state,JSON.parse(s))}catch(e){}
-  // Gemini's free tier reports 0 quota in some regions, so this now runs on Groq
-  // (free, OpenAI-compatible API) instead. Force any old Gemini model name onto a live Groq model.
-  const DEPRECATED_GEMINI_MODELS=['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash','gemini-1.5-pro','gemini-1.0-pro','gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.5-pro'];
-  if(DEPRECATED_GEMINI_MODELS.includes(state.geminiModel)){
-    state.geminiModel='llama-3.3-70b-versatile';
+  // Groq retired several model IDs on June 17, 2026 (gemma2-9b-it, llama-3.3-70b-versatile,
+  // llama-3.1-8b-instant, qwen/qwen3-32b, meta-llama/llama-4-scout-17b-16e-instruct).
+  // Force any old/decommissioned model name saved in localStorage onto a live Groq model.
+  const DEPRECATED_GROQ_MODELS=[
+    'gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash','gemini-1.5-pro','gemini-1.0-pro','gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.5-pro',
+    'gemma2-9b-it','gemma-7b-it','mixtral-8x7b-32768',
+    'llama-3.3-70b-versatile','llama-3.1-8b-instant','llama-3.1-70b-versatile','llama-3.1-70b-specdec',
+    'llama3-70b-8192','llama3-8b-8192','llama-3.2-1b-preview',
+    'qwen/qwen3-32b','qwen-qwq-32b','meta-llama/llama-4-scout-17b-16e-instruct','meta-llama/llama-4-maverick-17b-128e-instruct',
+    'deepseek-r1-distill-llama-70b','mistral-saba-24b'
+  ];
+  if(DEPRECATED_GROQ_MODELS.includes(state.geminiModel)){
+    state.geminiModel='openai/gpt-oss-120b';
   }
   if(!state.reasonsAssigned?.length)state.reasonsAssigned=DEFAULT_ASSIGNED.slice();
   if(!state.reasonsNotifiedExtra?.length)state.reasonsNotifiedExtra=DEFAULT_NOTIFIED_EXTRA.slice();
@@ -556,7 +564,7 @@ function updateStats(){
 async function geminiShorten(analysis, alertMeta){
   const key=state.geminiKey;
   if(!key)throw new Error('No Groq API key set in Settings.');
-  const model=state.geminiModel||'llama-3.3-70b-versatile';
+  const model=state.geminiModel||'openai/gpt-oss-120b';
   const prompt=`You are a SOC analyst writing a shift handover line.
 Compress the following alert analysis into ONE precise explanation (2–4 sentences max) for the next shift.
 Include: what happened, key finding, action/status (closed/escalated/monitoring). No MITRE lists, no tables, no fluff.
@@ -956,7 +964,7 @@ function openHistory(){
 
 function openSettings(){
   document.getElementById('geminiKey').value=state.geminiKey||'';
-  document.getElementById('geminiModel').value=state.geminiModel||'llama-3.3-70b-versatile';
+  document.getElementById('geminiModel').value=state.geminiModel||'openai/gpt-oss-120b';
   document.getElementById('useGemini').checked=state.useGemini!==false;
   renderReasonLists();
   document.getElementById('settingsModal').classList.add('active');
@@ -1005,3 +1013,4 @@ init();
 </script>
 </body>
 </html>
+
